@@ -4,19 +4,39 @@ This is a package for tfo-plugins intended to read the terraform resource spec o
 
 **Example usage**
 
+```bash
+export TFO_NAMESPACE=default
+export TFO_RESOURCE=hello-tfo
+```
+
 ```go
 package main
 
 import (
 	"log"
-	"tfohttpclient"
+	"github.com/galleybytes/tfohttpclient"
 )
 
 func main() {
-	b, err := tfohttpclient.ResourceSpec()
+	b, err := tfohttpclient.Resource()
 	if err != nil {
 		panic(err)
 	}
 	log.Print(string(b))
 }
+```
+
+Or unmarshal into the api
+
+```go
+import "github.com/isaaguilar/terraform-operator/pkg/apis/tf/v1alpha2"
+```
+
+```go
+	b, _ := tfohttpclient.Resource()
+	//Extract the spec
+	var tf v1alpha2.Terraform
+	err = json.Unmarshal(b, &tf)
+	// handle err
+	log.Printf("%+v", tf.Spec)
 ```

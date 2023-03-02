@@ -4,23 +4,29 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 )
 
-func ResourceSpec() ([]byte, error) {
-	certFile := "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-	tokenFile := "/var/run/secrets/kubernetes.io/serviceaccount/token"
-	host := os.Getenv("KUBERNETES_SERVICE_HOST")
-	if host == "" {
-		host = "kubernetes.default.svc"
+func envOrDefault(s, defaultval string) string {
+	env := os.Getenv(s)
+	if env != "" {
+		return env
 	}
-	group := "tf.isaaguilar.com/v1alpha2"
-	namespace := os.Getenv("TFO_NAMESPACE")
-	resource := os.Getenv("TFO_RESOURCE")
+	return defaultval
+}
+
+func Resource() ([]byte, error) {
+	var (
+		host      = envOrDefault("KUBERNETES_SERVICE_HOST", "kubernetes.default.svc")
+		certFile  = envOrDefault("CERTFILE", "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")
+		tokenFile = envOrDefault("TOKENFILE", "/var/run/secrets/kubernetes.io/serviceaccount/token")
+		group     = envOrDefault("TFO_GROUP", "tf.isaaguilar.com/v1alpha2")
+		namespace = envOrDefault("TFO_NAMESPACE", "")
+		resource  = envOrDefault("TFO_RESOURCE", "")
+	)
 	url := fmt.Sprintf("https://%s/apis/%s/namespaces/%s/terraforms/%s", host, group, namespace, resource)
 
 	// Get the SystemCertPool, continue with an empty pool on error
@@ -72,17 +78,5 @@ func ResourceSpec() ([]byte, error) {
 		return []byte{}, err
 	}
 
-	// Extract the spec
-	var respData interface{}
-	err = json.Unmarshal(body, &respData)
-	if err != nil {
-		return []byte{}, fmt.Errorf("response body failed to unmarshal: %s", err.Error())
-	}
-
-	specJson, err := json.Marshal(respData.(map[string]interface{})["spec"])
-	if err != nil {
-		return []byte{}, fmt.Errorf("could not find spec in response data: %s", err.Error())
-	}
-
-	return specJson, nil
+	return body, nil
 }
